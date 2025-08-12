@@ -49,8 +49,8 @@ export const init2D = (dom: HTMLElement) => {
 
   // 添加轨道控制器
   const controls = new MapControls(camera, renderer.domElement);
-  controls.enableRotate = false;
-  controls.target.set(200, 0, -100);
+  // controls.enableRotate = false;
+  controls.target.set(-200, 0, -100);
 
   // controls.addEventListener("change", () => {
   //   console.log(controls.target, camera.position);

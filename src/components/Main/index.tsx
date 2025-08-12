@@ -272,18 +272,19 @@ function Main() {
       const geometry = new THREE.ShapeGeometry(shape);
       const material = new THREE.MeshPhongMaterial({
         color: "white",
+        side: THREE.DoubleSide,
       });
 
       const wall = new THREE.Mesh(geometry, material);
-      wall.position.set(item.position.x, item.position.y, item.position.z);
+      wall.position.set(-item.position.x, -item.position.y, -item.position.z);
       
-      // if (item.rotationY) {
-      //   wall.rotation.y = item.rotationY;
-      // }
+      if (item.rotationY) {
+        wall.rotation.y = item.rotationY;
+      }
 
       wall.name = "wall" + index;
       wall.rotateX(-Math.PI / 2);
-      // wall.rotateZ(Math.PI);
+      wall.rotateY(Math.PI);
       return wall;
     });
 
@@ -323,12 +324,12 @@ function Main() {
 
     scene.add(house);
 
-    // const rad = THREE.MathUtils.degToRad(26);
-    // house.rotateY(rad);
+    const rad = THREE.MathUtils.degToRad(26);
+    house.rotateY(rad);
 
-    // const box3 = new THREE.Box3().expandByObject(house);
-    // const center = box3.getCenter(new THREE.Vector3());
-    // house.position.set(-center.x, 0, -center.z);
+    const box3 = new THREE.Box3().expandByObject(house);
+    const center = box3.getCenter(new THREE.Vector3());
+    house.position.set(-center.x, 0, -center.z);
   }, [data]);
 
   const [curMode, setCurMode] = useState<"3d" | "2d">("2d");

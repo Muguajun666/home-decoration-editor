@@ -10,6 +10,7 @@ interface Wall {
   width: number;
   height: number;
   depth: number;
+  color?: string;
   rotationY?: number;
   // 法线
   normal: {
