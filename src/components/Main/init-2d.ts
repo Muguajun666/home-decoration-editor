@@ -6,12 +6,12 @@ export const init2D = (dom: HTMLElement) => {
   const scene = new THREE.Scene();
 
   // 添加坐标轴辅助器  500是坐标轴的长度
-  // const axesHelper = new THREE.AxesHelper(500);
-  // scene.add(axesHelper);
+  const axesHelper = new THREE.AxesHelper(50000);
+  scene.add(axesHelper);
 
   // 添加平行光
   const directionalLight = new THREE.DirectionalLight(0xffffff);
-  directionalLight.position.set(500, 400, 300);
+  directionalLight.position.set(0, 1500, 0);
   scene.add(directionalLight);
 
   // 添加环境光
@@ -22,9 +22,9 @@ export const init2D = (dom: HTMLElement) => {
   const width = window.innerWidth;
   const height = window.innerHeight - 60;
 
-  const camera = new THREE.PerspectiveCamera(60, width / height, 1, 10000);
-  camera.position.set(200, 500, -100);
-  camera.lookAt(200, 0, -100);
+  const camera = new THREE.PerspectiveCamera(60, width / height, 1, 100000);
+  camera.position.set(0, 10000, 0);
+  camera.lookAt(0, 0, 0);
 
   // 创建渲染器 开启抗锯齿
   const renderer = new THREE.WebGLRenderer({

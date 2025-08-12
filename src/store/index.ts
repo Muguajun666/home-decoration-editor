@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import data from "./house2";
+import data from "./house1";
 
 interface Wall {
   position: {
@@ -11,6 +11,12 @@ interface Wall {
   height: number;
   depth: number;
   rotationY?: number;
+  // 法线
+  normal: {
+    x: number;
+    y: number;
+    z: number;
+  };
   windows?: Array<{
     leftBottomPosition: {
       left: number;
