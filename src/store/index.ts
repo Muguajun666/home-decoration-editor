@@ -62,9 +62,20 @@ export interface State {
   };
 }
 
-const useHouseStore = create<State>((set, get) => {
+export interface Action {
+  setData: (data: State["data"]) => void;
+}
+
+const useHouseStore = create<State & Action>((set, get) => {
   return {
     data: data,
+    setData: (_data) =>
+      set((state) => {
+        return {
+          ...state,
+          data: _data,
+        };
+      }),
   };
 });
 

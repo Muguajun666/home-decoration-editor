@@ -7,49 +7,37 @@ import { useHouseStore } from "../../store";
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
 import SpriteText from "three-spritetext";
 
-let windowModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
-let doorModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
+// let windowModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
+// let doorModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
 
 const loadWindow = async () => {
-  if (windowModel !== null) {
-    return windowModel;
-  } else {
-    const group = new THREE.Group();
-    const loader = new GLTFLoader();
-    const gltf = await loader.loadAsync("./window.glb");
-    group.add(gltf.scene);
+  const group = new THREE.Group();
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync("./window.glb");
+  group.add(gltf.scene);
 
-    const box = new THREE.Box3().expandByObject(gltf.scene);
+  const box = new THREE.Box3().expandByObject(gltf.scene);
 
-    const size = box.getSize(new THREE.Vector3());
-    windowModel = {
-      model: group,
-      size,
-    };
-
-    return windowModel;
-  }
+  const size = box.getSize(new THREE.Vector3());
+  return {
+    model: group,
+    size,
+  };
 };
 
 const loadDoor = async () => {
-  if (doorModel !== null) {
-    return doorModel;
-  } else {
-    const group = new THREE.Group();
-    const loader = new GLTFLoader();
-    const gltf = await loader.loadAsync("./door.glb");
-    group.add(gltf.scene);
+  const group = new THREE.Group();
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync("./door.glb");
+  group.add(gltf.scene);
 
-    const box = new THREE.Box3().expandByObject(gltf.scene);
+  const box = new THREE.Box3().expandByObject(gltf.scene);
 
-    const size = box.getSize(new THREE.Vector3());
-    doorModel = {
-      model: group,
-      size,
-    };
-
-    return doorModel;
-  }
+  const size = box.getSize(new THREE.Vector3());
+  return {
+    model: group,
+    size,
+  };
 };
 
 const textureLoader = new THREE.TextureLoader();
@@ -107,6 +95,31 @@ function Main() {
       dom.innerHTML = "";
     };
   }, []);
+
+  useEffect(() => {
+    const scene2d = scene2DRef.current!;
+    const scene3d = scene3DRef.current!;
+    const house2d = scene2d?.getObjectByName("house");
+    const house3d = scene3d?.getObjectByName("house");
+
+    house2d?.parent?.remove(house2d);
+    house3d?.parent?.remove(house3d);
+
+    // 释放2d场景的内存
+    house2d?.traverse((child) => {
+      const obj = child as THREE.Mesh;
+      if (obj.isMesh) {
+        obj.geometry.dispose();
+      }
+    });
+    // 释放3d场景的内存
+    house3d?.traverse((child) => {
+      const obj = child as THREE.Mesh;
+      if (obj.isMesh) {
+        obj.geometry.dispose();
+      }
+    });
+  }, [data]);
 
   useEffect(() => {
     const house = new THREE.Group();
@@ -247,6 +260,7 @@ function Main() {
     const box3 = new THREE.Box3().expandByObject(house);
     const center = box3.getCenter(new THREE.Vector3());
     house.position.set(-center.x, 0, -center.z);
+    house.name = "house";
   }, [data]);
 
   useEffect(() => {
@@ -353,12 +367,12 @@ function Main() {
       wall.position.set(-item.position.x, -item.position.y, -item.position.z);
 
       // 墙尺寸标注
-      const text = new SpriteText(item.width + '', 200)
-      text.color = 'black'
-      wall.add(text)
-      text.position.x = item.width / 2
-      text.position.y = 500
-      text.position.z = -100
+      const text = new SpriteText(item.width + "", 200);
+      text.color = "black";
+      wall.add(text);
+      text.position.x = item.width / 2;
+      text.position.y = 500;
+      text.position.z = -100;
 
       // 墙尺寸标注线
       const bufferGeometry = new THREE.BufferGeometry();
@@ -375,8 +389,8 @@ function Main() {
       const lineMaterial = new THREE.LineBasicMaterial({ color: "#111" });
       const line = new THREE.LineSegments(bufferGeometry, lineMaterial);
       wall.add(line);
-      line.position.y = 500
-      line.position.z = -100
+      line.position.y = 500;
+      line.position.z = -100;
 
       if (item.rotationY) {
         wall.rotation.y = item.rotationY;
@@ -443,6 +457,8 @@ function Main() {
     const box3 = new THREE.Box3().expandByObject(house);
     const center = box3.getCenter(new THREE.Vector3());
     house.position.set(-center.x, 0, -center.z);
+
+    house.name = "house";
   }, [data]);
 
   const [curMode, setCurMode] = useState<"3d" | "2d">("2d");

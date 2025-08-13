@@ -6,8 +6,8 @@ export const init3D = (dom: HTMLElement, wallsVisibilityCalc: () => void) => {
   const scene = new THREE.Scene();
 
   // 添加坐标轴辅助器  500是坐标轴的长度
-  const axesHelper = new THREE.AxesHelper(5000);
-  scene.add(axesHelper);
+  // const axesHelper = new THREE.AxesHelper(5000);
+  // scene.add(axesHelper);
 
   // 添加网格辅助器
   const gridHelper = new THREE.GridHelper(100000, 500, "white", "white");
