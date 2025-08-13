@@ -5,6 +5,7 @@ import { Button } from "antd";
 import * as THREE from "three";
 import { useHouseStore } from "../../store";
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
+import SpriteText from "three-spritetext";
 
 let windowModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
 let doorModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
@@ -157,6 +158,7 @@ function Main() {
         const { model, size } = await loadDoor();
         model.position.x = left + door.width / 2;
         model.position.y = bottom + door.height / 2;
+        model.position.z = item.depth;
         model.scale.y = door.height / size.y;
         model.scale.z = door.width / size.z;
         model.rotation.y = -Math.PI / 2;
@@ -168,7 +170,7 @@ function Main() {
         depth: item.depth,
       });
       const material = new THREE.MeshPhongMaterial({
-        color: "white",
+        color: item.color || "white",
       });
       const wall = new THREE.Mesh(geometry, material);
       wall.position.set(item.position.x, item.position.y, item.position.z);
@@ -208,6 +210,7 @@ function Main() {
         side: THREE.BackSide,
       });
       const floor = new THREE.Mesh(geometry, material);
+      floor.position.z = 200;
       floor.rotateX(Math.PI / 2);
 
       return floor;
@@ -231,6 +234,7 @@ function Main() {
       });
       const ceiling = new THREE.Mesh(geometry, material);
       ceiling.rotateX(Math.PI / 2);
+      ceiling.position.z = 200;
       ceiling.position.y = item.height;
 
       return ceiling;
@@ -240,9 +244,9 @@ function Main() {
 
     scene.add(house);
 
-    // const box3 = new THREE.Box3().expandByObject(house);
-    // const center = box3.getCenter(new THREE.Vector3());
-    // house.position.set(-center.x, 0, -center.z);
+    const box3 = new THREE.Box3().expandByObject(house);
+    const center = box3.getCenter(new THREE.Vector3());
+    house.position.set(-center.x, 0, -center.z);
   }, [data]);
 
   useEffect(() => {
@@ -269,15 +273,111 @@ function Main() {
       shape.lineTo(item.width, 0);
       shape.lineTo(0, 0);
 
+      // 2d挖孔 窗户
+      item.windows?.forEach(async (window) => {
+        const path = new THREE.Path();
+
+        const { left } = window.leftBottomPosition;
+
+        path.moveTo(left, 0);
+        path.lineTo(left, item.depth);
+        path.lineTo(left + window.width, item.depth);
+        path.lineTo(left + window.width, 0);
+        path.lineTo(left, 0);
+
+        shape.holes.push(path);
+      });
+
+      // 2d挖孔 门
+      item.doors?.forEach(async (door) => {
+        const path = new THREE.Path();
+        const { left } = door.leftBottomPosition;
+
+        path.moveTo(left, 0);
+        path.lineTo(left, item.depth);
+        path.lineTo(left + door.width, item.depth);
+        path.lineTo(left + door.width, 0);
+        path.lineTo(left, 0);
+
+        shape.holes.push(path);
+      });
+
       const geometry = new THREE.ShapeGeometry(shape);
       const material = new THREE.MeshPhongMaterial({
-        color: "white",
+        color: item.color || "white",
         side: THREE.DoubleSide,
       });
 
       const wall = new THREE.Mesh(geometry, material);
+
+      // 添加窗户标志
+      item.windows?.forEach((window) => {
+        const { left } = window.leftBottomPosition;
+        const geometry = new THREE.PlaneGeometry(window.width, item.depth);
+        const material = new THREE.MeshBasicMaterial({
+          color: "#aaa",
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide,
+        });
+        const windowLogo = new THREE.Mesh(geometry, material);
+        windowLogo.position.x = left + window.width / 2;
+        windowLogo.position.y = 100;
+        wall.add(windowLogo);
+      });
+
+      // 添加门标志
+      item.doors?.forEach((door) => {
+        const { left } = door.leftBottomPosition;
+
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.arc(0, 0, door.width, 0, Math.PI / 2);
+        shape.lineTo(0, 0);
+
+        const geometry = new THREE.ShapeGeometry(shape);
+        const material = new THREE.MeshBasicMaterial({
+          color: "#aaa",
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide,
+        });
+        const doorLogo = new THREE.Mesh(geometry, material);
+        doorLogo.position.x = left;
+        doorLogo.position.z = -100;
+        doorLogo.rotateX(Math.PI);
+        doorLogo.position.y = 200;
+        wall.add(doorLogo);
+      });
+
       wall.position.set(-item.position.x, -item.position.y, -item.position.z);
-      
+
+      // 墙尺寸标注
+      const text = new SpriteText(item.width + '', 200)
+      text.color = 'black'
+      wall.add(text)
+      text.position.x = item.width / 2
+      text.position.y = 500
+      text.position.z = -100
+
+      // 墙尺寸标注线
+      const bufferGeometry = new THREE.BufferGeometry();
+      bufferGeometry.setFromPoints([
+        new THREE.Vector3(0, -100, 0),
+        new THREE.Vector3(0, 100, 0),
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(item.width / 2 - 300, 0, 0),
+        new THREE.Vector3(item.width / 2 + 300, 0, 0),
+        new THREE.Vector3(item.width, 0, 0),
+        new THREE.Vector3(item.width, -100, 0),
+        new THREE.Vector3(item.width, 100, 0),
+      ]);
+      const lineMaterial = new THREE.LineBasicMaterial({ color: "#111" });
+      const line = new THREE.LineSegments(bufferGeometry, lineMaterial);
+      wall.add(line);
+      line.position.y = 500
+      line.position.z = -100
+
       if (item.rotationY) {
         wall.rotation.y = item.rotationY;
       }
@@ -315,8 +415,21 @@ function Main() {
       });
 
       const floor = new THREE.Mesh(geometry, material);
+      floor.position.z = -200;
+
+      const text = new SpriteText(item.name + "\n" + item.size + "m²", 200);
+      text.color = "black";
+
+      const box3 = new THREE.Box3().expandByObject(floor);
+      const center = box3.getCenter(new THREE.Vector3());
+      text.position.set(center.x, center.y, center.z);
+      const helper = new THREE.Box3Helper(box3);
+      floor.add(helper);
+
+      floor.add(text);
+
       floor.rotateX(Math.PI / 2);
-      // floor.rotateZ(Math.PI);
+      floor.rotateZ(Math.PI);
       return floor;
     });
 
@@ -324,7 +437,7 @@ function Main() {
 
     scene.add(house);
 
-    const rad = THREE.MathUtils.degToRad(26);
+    const rad = THREE.MathUtils.degToRad(90);
     house.rotateY(rad);
 
     const box3 = new THREE.Box3().expandByObject(house);

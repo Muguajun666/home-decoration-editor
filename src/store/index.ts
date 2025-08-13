@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import data from "./house1";
+import data from "./house2";
 
 interface Wall {
   position: {
@@ -42,6 +42,8 @@ interface Floor {
     z: number;
   }>;
   textureUrl?: string;
+  name?: string;
+  size?: number;
 }
 
 interface Ceiling {

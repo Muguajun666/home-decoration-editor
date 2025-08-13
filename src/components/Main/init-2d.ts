@@ -6,8 +6,8 @@ export const init2D = (dom: HTMLElement) => {
   const scene = new THREE.Scene();
 
   // 添加坐标轴辅助器  500是坐标轴的长度
-  const axesHelper = new THREE.AxesHelper(50000);
-  scene.add(axesHelper);
+  // const axesHelper = new THREE.AxesHelper(500);
+  // scene.add(axesHelper);
 
   // 添加平行光
   const directionalLight = new THREE.DirectionalLight(0xffffff);
@@ -15,7 +15,7 @@ export const init2D = (dom: HTMLElement) => {
   scene.add(directionalLight);
 
   // 添加环境光
-  const ambientLight = new THREE.AmbientLight(0xffffff);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
   scene.add(ambientLight);
 
   // 设置相机
@@ -49,8 +49,8 @@ export const init2D = (dom: HTMLElement) => {
 
   // 添加轨道控制器
   const controls = new MapControls(camera, renderer.domElement);
-  // controls.enableRotate = false;
-  controls.target.set(-200, 0, -100);
+  controls.enableRotate = false;
+  // controls.target.set(200, 0, -100);
 
   // controls.addEventListener("change", () => {
   //   console.log(controls.target, camera.position);
