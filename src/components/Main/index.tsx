@@ -3,7 +3,7 @@ import { init3D } from "./init-3d";
 import { init2D } from "./init-2d";
 import { Button } from "antd";
 import * as THREE from "three";
-import { useHouseStore } from "../../store";
+import { State, useHouseStore } from "../../store";
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
 import SpriteText from "three-spritetext";
 
@@ -51,8 +51,18 @@ function Main() {
   const scene3DRef = useRef<THREE.Scene>(null);
   const scene2DRef = useRef<THREE.Scene>(null);
   const camera3DRef = useRef<THREE.Camera>(null);
+  const changeModeRef = useRef<(isTranslate: boolean) => void>(null);
+  const changeMode2DRef = useRef<(isTranslate: boolean) => void>(null);
+  const changeSizeRef = useRef<(isBig: boolean) => void>(null);
+  const changeSize2DRef = useRef<(isBig: boolean) => void>(null);
 
-  const { data } = useHouseStore();
+  const [curMode, setCurMode] = useState("2d");
+
+  const { data, updateFurniture } = useHouseStore();
+
+  // 动态获取data 避免闭包问题
+  const dataRef = useRef<State["data"]>(null);
+  dataRef.current = data;
 
   // 计算法线与相机夹角
   const wallsVisibilityCalc = () => {
@@ -63,7 +73,7 @@ function Main() {
       return;
     }
 
-    data.walls.forEach((item, index) => {
+    dataRef.current!.walls.forEach((item, index) => {
       const cameraDirection = new THREE.Vector3();
       camera.getWorldDirection(cameraDirection);
 
@@ -86,10 +96,16 @@ function Main() {
 
   useEffect(() => {
     const dom = document.getElementById("threejs-3d-container")!;
-    const { scene, camera } = init3D(dom, wallsVisibilityCalc);
+    const { scene, camera, changeMode, changeSize } = init3D(
+      dom,
+      wallsVisibilityCalc,
+      updateFurniture
+    );
 
     scene3DRef.current = scene;
     camera3DRef.current = camera;
+    changeModeRef.current = changeMode;
+    changeSizeRef.current = changeSize;
 
     return () => {
       dom.innerHTML = "";
@@ -97,10 +113,21 @@ function Main() {
   }, []);
 
   useEffect(() => {
+    const changeSize3D = changeSizeRef.current!;
+
+    changeSize3D(false);
+  }, []);
+
+  useEffect(() => {
     const scene2d = scene2DRef.current!;
     const scene3d = scene3DRef.current!;
     const house2d = scene2d?.getObjectByName("house");
     const house3d = scene3d?.getObjectByName("house");
+
+    // 更新家具情况
+    if (data.walls.length) {
+      return;
+    }
 
     house2d?.parent?.remove(house2d);
     house3d?.parent?.remove(house3d);
@@ -124,6 +151,26 @@ function Main() {
   useEffect(() => {
     const house = new THREE.Group();
     const scene = scene3DRef.current!;
+
+    if (!data.walls.length) {
+      return;
+    }
+
+    // house存在的情况 只更新家具
+    const houseObj = scene.getObjectByName("house");
+    if (houseObj) {
+      data.furnitures.forEach((item) => {
+        const obj = houseObj.getObjectByName(item.id);
+
+        if (obj) {
+          obj.position.set(item.position.x, item.position.y, item.position.z);
+          obj.rotation.x = item.rotation.x;
+          obj.rotation.y = item.rotation.y;
+          obj.rotation.z = item.rotation.z;
+        }
+      });
+      return;
+    }
 
     // 造墙
     const walls = data.walls.map((item, index) => {
@@ -255,19 +302,48 @@ function Main() {
 
     house.add(...ceilings);
 
+    // 造家具
+    const furnitures = new THREE.Group();
+    furnitures.name = "furnitures";
+    data.furnitures.forEach((item) => {
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.load(item.modelUrl, (gltf) => {
+        furnitures.add(gltf.scene);
+        gltf.scene.position.set(
+          item.position.x,
+          item.position.y,
+          item.position.z
+        );
+        gltf.scene.rotation.x = item.rotation.x;
+        gltf.scene.rotation.y = item.rotation.y;
+        gltf.scene.rotation.z = item.rotation.z;
+
+        // 设置家具的target为gltf.scene
+        gltf.scene.traverse((obj) => {
+          (obj as any).target = gltf.scene;
+        });
+
+        gltf.scene.name = item.id;
+      });
+    });
+    house.add(furnitures);
+
     scene.add(house);
 
     const box3 = new THREE.Box3().expandByObject(house);
     const center = box3.getCenter(new THREE.Vector3());
     house.position.set(-center.x, 0, -center.z);
     house.name = "house";
+
   }, [data]);
 
   useEffect(() => {
     const dom = document.getElementById("threejs-2d-container")!;
-    const { scene } = init2D(dom);
+    const { scene, changeMode, changeSize } = init2D(dom, updateFurniture);
 
     scene2DRef.current = scene;
+    changeMode2DRef.current = changeMode;
+    changeSize2DRef.current = changeSize;
 
     return () => {
       dom.innerHTML = "";
@@ -277,6 +353,28 @@ function Main() {
   useEffect(() => {
     const scene = scene2DRef.current!;
     const house = new THREE.Group();
+
+    if (!data.walls.length) {
+      return;
+    }
+
+    const houseObj = scene.getObjectByName("house");
+    if (houseObj) {
+      data.furnitures.forEach((item) => {
+        const obj = houseObj.getObjectByName(item.id);
+        if (obj) {
+          obj.position.set(
+            -item.position.x,
+            -item.position.y,
+            -item.position.z
+          );
+          obj.rotation.x = item.rotation.x;
+          obj.rotation.y = item.rotation.y;
+          obj.rotation.z = item.rotation.z;
+        }
+      });
+      return;
+    }
 
     // 造墙
     const walls = data.walls.map((item, index) => {
@@ -449,6 +547,33 @@ function Main() {
 
     house.add(...floors);
 
+    // 造家具
+    const furnitures = new THREE.Group();
+    furnitures.name = "furnitures";
+
+    data.furnitures.forEach((item) => {
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.load(item.modelUrl, (gltf) => {
+        furnitures.add(gltf.scene);
+
+        gltf.scene.position.set(
+          -item.position.x,
+          -item.position.y,
+          -item.position.z
+        );
+        gltf.scene.rotation.x = item.rotation.x;
+        gltf.scene.rotation.y = item.rotation.y;
+        gltf.scene.rotation.z = item.rotation.z;
+
+        gltf.scene.traverse((obj) => {
+          (obj as any).target = gltf.scene;
+        });
+
+        gltf.scene.name = item.id;
+      });
+    });
+    house.add(furnitures);
+
     scene.add(house);
 
     const rad = THREE.MathUtils.degToRad(90);
@@ -459,19 +584,32 @@ function Main() {
     house.position.set(-center.x, 0, -center.z);
 
     house.name = "house";
+
+    // const helper = new THREE.AxesHelper(30000);
+    // house.add(helper);
   }, [data]);
 
-  const [curMode, setCurMode] = useState<"3d" | "2d">("2d");
+  useEffect(() => {
+    const changeSize2D = changeSize2DRef.current!;
+    const changeSize3D = changeSizeRef.current!;
+    if (curMode === "2d") {
+      changeSize2D(true);
+      changeSize3D(false);
+    } else {
+      changeSize2D(false);
+      changeSize3D(true);
+    }
+  }, [curMode]);
 
   return (
     <div className="main">
       <div
         id="threejs-3d-container"
-        style={{ display: curMode === "3d" ? "block" : "none" }}
+        style={{ zIndex: curMode === "2d" ? 2 : 1 }}
       ></div>
       <div
         id="threejs-2d-container"
-        style={{ display: curMode === "2d" ? "block" : "none" }}
+        style={{ zIndex: curMode === "3d" ? 2 : 1 }}
       ></div>
       <div className="mode-change-btns">
         <Button
@@ -484,8 +622,26 @@ function Main() {
         <Button
           type={curMode === "3d" ? "primary" : "default"}
           onClick={() => setCurMode("3d")}
+          style={{ marginRight: 10 }}
         >
           3D
+        </Button>
+        <Button
+          onClick={() => {
+            changeModeRef.current!(true);
+            changeMode2DRef.current!(true);
+          }}
+          style={{ marginRight: 10 }}
+        >
+          平移
+        </Button>
+        <Button
+          onClick={() => {
+            changeModeRef.current!(false);
+            changeMode2DRef.current!(false);
+          }}
+        >
+          旋转
         </Button>
       </div>
     </div>

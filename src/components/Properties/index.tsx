@@ -7,7 +7,7 @@ function Properties() {
     <div className="properties" style={{ width: width }}>
       <div
         className="drawer-bar"
-        onClick={() => setWidth(width === 0 ? 300 : 0)}
+        onClick={() => setWidth(width === 0 ? 240 : 0)}
       ></div>
     </div>
   );

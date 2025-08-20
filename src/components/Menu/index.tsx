@@ -46,7 +46,15 @@ function Menu() {
             title="提醒"
             description="切换户型将清空数据，是否继续？"
             onConfirm={() => {
-              setData(data1);
+              setData({
+                walls: [],
+                floors: [],
+                ceilings: [],
+                furnitures: [],
+              });
+              setTimeout(() => {
+                setData(data1);
+              }, 0);
             }}
             okText="是"
             cancelText="否"
@@ -63,7 +71,15 @@ function Menu() {
             title="提醒"
             description="切换户型将清空数据，是否继续？"
             onConfirm={() => {
-              setData(data2);
+              setData({
+                walls: [],
+                floors: [],
+                ceilings: [],
+                furnitures: [],
+              });
+              setTimeout(() => {
+                setData(data2);
+              }, 0);
             }}
             okText="是"
             cancelText="否"
@@ -78,7 +94,9 @@ function Menu() {
           </Popconfirm>
         </div>
       ) : null}
-      {key === "家具" ? <div>222</div> : null}
+      {key === "家具" ? <div>
+        
+      </div> : null}
       <div
         className="drawer-bar"
         onClick={() => setLeft(left === 0 ? -300 : 0)}
