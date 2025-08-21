@@ -4,8 +4,13 @@ import { init2D } from "./init-2d";
 import { Button } from "antd";
 import * as THREE from "three";
 import { State, useHouseStore } from "../../store";
-import { GLTFLoader } from "three/examples/jsm/Addons.js";
+import {
+  DRACOLoader,
+  GLTFLoader,
+  OrbitControls,
+} from "three/examples/jsm/Addons.js";
 import SpriteText from "three-spritetext";
+import { useDrop } from "react-dnd";
 
 // let windowModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
 // let doorModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
@@ -55,10 +60,11 @@ function Main() {
   const changeMode2DRef = useRef<(isTranslate: boolean) => void>(null);
   const changeSizeRef = useRef<(isBig: boolean) => void>(null);
   const changeSize2DRef = useRef<(isBig: boolean) => void>(null);
+  const controlsRef = useRef<OrbitControls>(null);
 
   const [curMode, setCurMode] = useState("2d");
 
-  const { data, updateFurniture } = useHouseStore();
+  const { data, updateFurniture, addFurniture } = useHouseStore();
 
   // 动态获取data 避免闭包问题
   const dataRef = useRef<State["data"]>(null);
@@ -96,7 +102,7 @@ function Main() {
 
   useEffect(() => {
     const dom = document.getElementById("threejs-3d-container")!;
-    const { scene, camera, changeMode, changeSize } = init3D(
+    const { scene, camera, changeMode, changeSize, controls } = init3D(
       dom,
       wallsVisibilityCalc,
       updateFurniture
@@ -106,6 +112,7 @@ function Main() {
     camera3DRef.current = camera;
     changeModeRef.current = changeMode;
     changeSizeRef.current = changeSize;
+    controlsRef.current = controls;
 
     return () => {
       dom.innerHTML = "";
@@ -163,10 +170,44 @@ function Main() {
         const obj = houseObj.getObjectByName(item.id);
 
         if (obj) {
+          // 更新家具位置
           obj.position.set(item.position.x, item.position.y, item.position.z);
           obj.rotation.x = item.rotation.x;
           obj.rotation.y = item.rotation.y;
           obj.rotation.z = item.rotation.z;
+        } else {
+          // 添加家具
+          const gltfLoader = new GLTFLoader();
+          const furnitures = houseObj.getObjectByName("furnitures")!;
+
+          if (item.isDraco) {
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath(
+              "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
+            );
+            gltfLoader.setDRACOLoader(dracoLoader);
+          }
+
+          gltfLoader.load(item.modelUrl, (gltf) => {
+            furnitures.add(gltf.scene);
+
+            gltf.scene.scale.setScalar(item.modelScale || 1);
+
+            gltf.scene.position.set(
+              item.position.x,
+              item.position.y,
+              item.position.z
+            );
+            gltf.scene.rotation.x = item.rotation.x;
+            gltf.scene.rotation.y = item.rotation.y;
+            gltf.scene.rotation.z = item.rotation.z;
+
+            gltf.scene.traverse((obj) => {
+              (obj as any).target = gltf.scene;
+            });
+
+            gltf.scene.name = item.id;
+          });
         }
       });
       return;
@@ -247,7 +288,9 @@ function Main() {
     house.add(...walls);
 
     // 造地板
-    const floors = data.floors.map((item) => {
+    const floorGroup = new THREE.Group();
+    floorGroup.name = "floors";
+    data.floors.map((item) => {
       const shape = new THREE.Shape();
       shape.moveTo(item.points[0].x, item.points[0].z);
 
@@ -273,10 +316,12 @@ function Main() {
       floor.position.z = 200;
       floor.rotateX(Math.PI / 2);
 
+      floorGroup.add(floor);
+
       return floor;
     });
 
-    house.add(...floors);
+    house.add(floorGroup);
 
     // 造天花板
     const ceilings = data.ceilings.map((item) => {
@@ -305,10 +350,23 @@ function Main() {
     // 造家具
     const furnitures = new THREE.Group();
     furnitures.name = "furnitures";
+
     data.furnitures.forEach((item) => {
       const gltfLoader = new GLTFLoader();
+
+      if (item.isDraco) {
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath(
+          "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
+        );
+        gltfLoader.setDRACOLoader(dracoLoader);
+      }
+
       gltfLoader.load(item.modelUrl, (gltf) => {
         furnitures.add(gltf.scene);
+
+        gltf.scene.scale.setScalar(item.modelScale || 1);
+
         gltf.scene.position.set(
           item.position.x,
           item.position.y,
@@ -332,9 +390,13 @@ function Main() {
 
     const box3 = new THREE.Box3().expandByObject(house);
     const center = box3.getCenter(new THREE.Vector3());
-    house.position.set(-center.x, 0, -center.z);
-    house.name = "house";
+    // house.position.set(-center.x, 0, -center.z);
 
+    // 设置相机位置
+    camera3DRef.current?.lookAt(center.x, 0, center.z);
+    controlsRef.current?.target.set(center.x, 0, center.z);
+
+    house.name = "house";
   }, [data]);
 
   useEffect(() => {
@@ -350,6 +412,7 @@ function Main() {
     };
   }, []);
 
+  // 2d场景家具更新
   useEffect(() => {
     const scene = scene2DRef.current!;
     const house = new THREE.Group();
@@ -371,6 +434,39 @@ function Main() {
           obj.rotation.x = item.rotation.x;
           obj.rotation.y = item.rotation.y;
           obj.rotation.z = item.rotation.z;
+        } else {
+          // 添加家具
+          const gltfLoader = new GLTFLoader();
+          const furnitures = houseObj.getObjectByName("furnitures")!;
+
+          if (item.isDraco) {
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath(
+              "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
+            );
+            gltfLoader.setDRACOLoader(dracoLoader);
+          }
+
+          gltfLoader.load(item.modelUrl, (gltf) => {
+            furnitures.add(gltf.scene);
+
+            gltf.scene.scale.setScalar(item.modelScale || 1);
+
+            gltf.scene.position.set(
+              -item.position.x,
+              -item.position.y,
+              -item.position.z
+            );
+            gltf.scene.rotation.x = item.rotation.x;
+            gltf.scene.rotation.y = item.rotation.y;
+            gltf.scene.rotation.z = item.rotation.z;
+
+            gltf.scene.traverse((obj) => {
+              (obj as any).target = gltf.scene;
+            });
+
+            gltf.scene.name = item.id;
+          });
         }
       });
       return;
@@ -503,6 +599,7 @@ function Main() {
     house.add(...walls);
 
     // 造地板
+
     const floors = data.floors.map((item) => {
       const shape = new THREE.Shape();
       shape.moveTo(item.points[0].x, item.points[0].z);
@@ -542,6 +639,7 @@ function Main() {
 
       floor.rotateX(Math.PI / 2);
       floor.rotateZ(Math.PI);
+
       return floor;
     });
 
@@ -553,8 +651,19 @@ function Main() {
 
     data.furnitures.forEach((item) => {
       const gltfLoader = new GLTFLoader();
+
+      if (item.isDraco) {
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath(
+          "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
+        );
+        gltfLoader.setDRACOLoader(dracoLoader);
+      }
+
       gltfLoader.load(item.modelUrl, (gltf) => {
         furnitures.add(gltf.scene);
+
+        gltf.scene.scale.setScalar(item.modelScale || 1);
 
         gltf.scene.position.set(
           -item.position.x,
@@ -600,6 +709,63 @@ function Main() {
       changeSize3D(true);
     }
   }, [curMode]);
+
+  const [, drop] = useDrop({
+    accept: "家具",
+    drop: (item: any, monitor) => {
+      const { modelUrl, isDraco, modelScale } = item;
+
+      const dom = document.getElementById("threejs-3d-container")!;
+      // 获取鼠标在3d场景中的位置
+      const clientOffset = monitor.getClientOffset();
+      // 获取3d场景的矩形区域
+      const rect = dom.getBoundingClientRect();
+
+      if (clientOffset && rect) {
+        const offsetX = clientOffset.x - rect.x;
+        const offsetY = clientOffset.y - rect.y;
+
+        const width = window.innerWidth;
+        const height = window.innerHeight - 60;
+
+        const y = -((offsetY / height) * 2 - 1);
+        const x = (offsetX / width) * 2 - 1;
+
+        const rayCaster = new THREE.Raycaster();
+        rayCaster.setFromCamera(new THREE.Vector2(x, y), camera3DRef.current!);
+
+        const scene3D = scene3DRef.current!;
+
+        const floorGroup = scene3D.getObjectByName("floors")!;
+        const intersections = rayCaster.intersectObjects(floorGroup.children);
+
+        if (intersections.length) {
+          const point = intersections[0].point;
+          addFurniture({
+            id: "furniture" + Math.random().toString().slice(2, 8),
+            modelUrl,
+            isDraco,
+            modelScale,
+            position: {
+              x: point.x,
+              y: 0,
+              z: point.z,
+            },
+            rotation: {
+              x: 0,
+              y: 0,
+              z: 0,
+            },
+          });
+        }
+      }
+    },
+  });
+
+  useEffect(() => {
+    const div = document.getElementById("threejs-3d-container")!;
+    drop(div);
+  }, []);
 
   return (
     <div className="main">

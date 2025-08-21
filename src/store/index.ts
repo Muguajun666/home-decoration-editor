@@ -58,6 +58,8 @@ interface Ceiling {
 interface Furniture {
   id: string;
   modelUrl: string;
+  modelScale?: number;
+  isDraco?: boolean;
   position: {
     x: number;
     y: number;
@@ -86,6 +88,7 @@ export interface Action {
     type: "position" | "rotation",
     info: Vector3
   ) => void;
+  addFurniture: (furniture: Furniture) => void;
 }
 
 const stateCreator: StateCreator<State & Action> = (set, get) => {
@@ -118,6 +121,17 @@ const stateCreator: StateCreator<State & Action> = (set, get) => {
               }
               return item;
             }),
+          },
+        };
+      });
+    },
+    addFurniture: (furniture) => {
+      set((state) => {
+        return {
+          ...state,
+          data: {
+            ...state.data,
+            furnitures: [...state.data.furnitures, furniture],
           },
         };
       });

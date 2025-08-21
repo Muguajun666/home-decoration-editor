@@ -191,5 +191,6 @@ export const init3D = (
     camera,
     changeMode,
     changeSize,
+    controls
   };
 };
