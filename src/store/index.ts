@@ -59,7 +59,6 @@ interface Furniture {
   id: string;
   modelUrl: string;
   modelScale?: number;
-  isDraco?: boolean;
   position: {
     x: number;
     y: number;
@@ -79,6 +78,8 @@ export interface State {
     ceilings: Ceiling[];
     furnitures: Furniture[];
   };
+  showPreview: boolean;
+  curSelectedFurniture: Furniture | null;
 }
 
 export interface Action {
@@ -89,11 +90,25 @@ export interface Action {
     info: Vector3
   ) => void;
   addFurniture: (furniture: Furniture) => void;
+  removeFurniture: (id: string) => void;
+  toggleShowPreview: () => void;
+  setCurSelectedFurniture: (id: string) => void;
 }
 
 const stateCreator: StateCreator<State & Action> = (set, get) => {
   return {
     data: data,
+    showPreview: false,
+    curSelectedFurniture: null,
+    setCurSelectedFurniture: (id) => {
+      set((state) => {
+        const found = state.data.furnitures.filter((item) => item.id === id);
+        return {
+          ...state,
+          curSelectedFurniture: found.length ? found[0] : null,
+        };
+      });
+    },
     setData: (_data) =>
       set((state) => {
         return {
@@ -132,6 +147,25 @@ const stateCreator: StateCreator<State & Action> = (set, get) => {
           data: {
             ...state.data,
             furnitures: [...state.data.furnitures, furniture],
+          },
+        };
+      });
+    },
+    toggleShowPreview: () => {
+      set((state) => {
+        return {
+          ...state,
+          showPreview: !state.showPreview,
+        };
+      });
+    },
+    removeFurniture: (id) => {
+      set((state) => {
+        return {
+          ...state,
+          data: {
+            ...state.data,
+            furnitures: state.data.furnitures.filter((item) => item.id !== id),
           },
         };
       });

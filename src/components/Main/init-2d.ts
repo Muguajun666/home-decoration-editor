@@ -4,7 +4,8 @@ import { Action } from "../../store";
 
 export const init2D = (
   dom: HTMLElement,
-  updateFurniture: Action["updateFurniture"]
+  updateFurniture: Action["updateFurniture"],
+  setCurSelectedFurniture: Action["setCurSelectedFurniture"]
 ) => {
   // 创建场景
   const scene = new THREE.Scene();
@@ -81,7 +82,7 @@ export const init2D = (
     // 如果窗口高度为200，则不进行调整
     const size = renderer.getSize(new THREE.Vector2());
     if (size.y === 200) return;
-    
+
     const width = window.innerWidth;
     const height = window.innerHeight - 60;
 
@@ -107,7 +108,6 @@ export const init2D = (
   render();
 
   renderer.domElement.addEventListener("click", (e) => {
-    
     const { x: width, y: height } = renderer.getSize(new THREE.Vector2());
 
     const y = -((e.offsetY / height) * 2 - 1);
@@ -124,9 +124,11 @@ export const init2D = (
       const obj = intersections2[0].object as any;
       if (obj.target) {
         transformControls.attach(obj.target);
+        setCurSelectedFurniture(obj.target.name);
       }
     } else {
       transformControls.detach();
+      setCurSelectedFurniture("");
     }
   });
 
@@ -164,9 +166,14 @@ export const init2D = (
     }
   };
 
+  const detachTransformControls = () => {
+    transformControls.detach();
+  }
+
   return {
     scene,
     changeMode,
     changeSize,
+    detachTransformControls,
   };
 };

@@ -11,14 +11,27 @@ import {
 } from "three/examples/jsm/Addons.js";
 import SpriteText from "three-spritetext";
 import { useDrop } from "react-dnd";
+import { modelMap } from "../../App";
 
-// let windowModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
-// let doorModel: { model: THREE.Group; size: THREE.Vector3 } | null = null;
+let loaderCache: GLTFLoader;
 
-const loadWindow = async () => {
+export const getGLTFLoader = () => {
+  if (!loaderCache) {
+    const gltfLoader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath(
+      "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
+    );
+    gltfLoader.setDRACOLoader(dracoLoader);
+    loaderCache = gltfLoader;
+  }
+  return loaderCache;
+};
+
+export const loadWindow = async () => {
   const group = new THREE.Group();
-  const loader = new GLTFLoader();
-  const gltf = await loader.loadAsync("./window.glb");
+  const gltf = await modelMap["./window.glb"];
+  gltf.scene = gltf.scene.clone();
   group.add(gltf.scene);
 
   const box = new THREE.Box3().expandByObject(gltf.scene);
@@ -30,10 +43,10 @@ const loadWindow = async () => {
   };
 };
 
-const loadDoor = async () => {
+export const loadDoor = async () => {
   const group = new THREE.Group();
-  const loader = new GLTFLoader();
-  const gltf = await loader.loadAsync("./door.glb");
+  const gltf = await modelMap["./door.glb"];
+  gltf.scene = gltf.scene.clone();
   group.add(gltf.scene);
 
   const box = new THREE.Box3().expandByObject(gltf.scene);
@@ -46,7 +59,7 @@ const loadDoor = async () => {
 };
 
 const textureLoader = new THREE.TextureLoader();
-const floorTexture = textureLoader.load("./floor-texture.png");
+export const floorTexture = textureLoader.load("./floor-texture.png");
 floorTexture.colorSpace = THREE.SRGBColorSpace;
 floorTexture.wrapS = THREE.RepeatWrapping;
 floorTexture.wrapT = THREE.RepeatWrapping;
@@ -61,10 +74,19 @@ function Main() {
   const changeSizeRef = useRef<(isBig: boolean) => void>(null);
   const changeSize2DRef = useRef<(isBig: boolean) => void>(null);
   const controlsRef = useRef<OrbitControls>(null);
+  const detachTransformControls3DRef = useRef<() => void>(null);
+  const detachTransformControls2DRef = useRef<() => void>(null);
 
   const [curMode, setCurMode] = useState("2d");
 
-  const { data, updateFurniture, addFurniture } = useHouseStore();
+  const {
+    data,
+    updateFurniture,
+    addFurniture,
+    setCurSelectedFurniture,
+    removeFurniture,
+    curSelectedFurniture,
+  } = useHouseStore();
 
   // 动态获取data 避免闭包问题
   const dataRef = useRef<State["data"]>(null);
@@ -100,12 +122,52 @@ function Main() {
     });
   };
 
+  // 删除选中的家具
+  useEffect(() => {
+    const scene = scene3DRef.current!;
+    const scene2d = scene2DRef.current!;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Backspace") {
+        if (curSelectedFurniture) {
+          const furniture = scene.getObjectByName(curSelectedFurniture.id);
+
+          if (furniture) {
+            furniture.parent?.remove(furniture);
+            removeFurniture(furniture.name);
+            setCurSelectedFurniture("");
+            detachTransformControls3DRef.current!();
+          }
+
+          const furniture2d = scene2d.getObjectByName(curSelectedFurniture.id);
+          if (furniture2d) {
+            furniture2d.parent?.remove(furniture2d);
+            detachTransformControls2DRef.current!();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [curSelectedFurniture]);
+
   useEffect(() => {
     const dom = document.getElementById("threejs-3d-container")!;
-    const { scene, camera, changeMode, changeSize, controls } = init3D(
+    const {
+      scene,
+      camera,
+      changeMode,
+      changeSize,
+      controls,
+      detachTransformControls,
+    } = init3D(
       dom,
       wallsVisibilityCalc,
-      updateFurniture
+      updateFurniture,
+      setCurSelectedFurniture
     );
 
     scene3DRef.current = scene;
@@ -113,6 +175,7 @@ function Main() {
     changeModeRef.current = changeMode;
     changeSizeRef.current = changeSize;
     controlsRef.current = controls;
+    detachTransformControls3DRef.current = detachTransformControls;
 
     return () => {
       dom.innerHTML = "";
@@ -177,18 +240,11 @@ function Main() {
           obj.rotation.z = item.rotation.z;
         } else {
           // 添加家具
-          const gltfLoader = new GLTFLoader();
           const furnitures = houseObj.getObjectByName("furnitures")!;
 
-          if (item.isDraco) {
-            const dracoLoader = new DRACOLoader();
-            dracoLoader.setDecoderPath(
-              "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
-            );
-            gltfLoader.setDRACOLoader(dracoLoader);
-          }
+          modelMap[item.modelUrl].then((gltf) => {
+            gltf.scene = gltf.scene.clone();
 
-          gltfLoader.load(item.modelUrl, (gltf) => {
             furnitures.add(gltf.scene);
 
             gltf.scene.scale.setScalar(item.modelScale || 1);
@@ -352,17 +408,9 @@ function Main() {
     furnitures.name = "furnitures";
 
     data.furnitures.forEach((item) => {
-      const gltfLoader = new GLTFLoader();
+      modelMap[item.modelUrl].then((gltf) => {
+        gltf.scene = gltf.scene.clone();
 
-      if (item.isDraco) {
-        const dracoLoader = new DRACOLoader();
-        dracoLoader.setDecoderPath(
-          "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
-        );
-        gltfLoader.setDRACOLoader(dracoLoader);
-      }
-
-      gltfLoader.load(item.modelUrl, (gltf) => {
         furnitures.add(gltf.scene);
 
         gltf.scene.scale.setScalar(item.modelScale || 1);
@@ -401,12 +449,16 @@ function Main() {
 
   useEffect(() => {
     const dom = document.getElementById("threejs-2d-container")!;
-    const { scene, changeMode, changeSize } = init2D(dom, updateFurniture);
+    const { scene, changeMode, changeSize, detachTransformControls } = init2D(
+      dom,
+      updateFurniture,
+      setCurSelectedFurniture
+    );
 
     scene2DRef.current = scene;
     changeMode2DRef.current = changeMode;
     changeSize2DRef.current = changeSize;
-
+    detachTransformControls2DRef.current = detachTransformControls;
     return () => {
       dom.innerHTML = "";
     };
@@ -436,18 +488,11 @@ function Main() {
           obj.rotation.z = item.rotation.z;
         } else {
           // 添加家具
-          const gltfLoader = new GLTFLoader();
           const furnitures = houseObj.getObjectByName("furnitures")!;
 
-          if (item.isDraco) {
-            const dracoLoader = new DRACOLoader();
-            dracoLoader.setDecoderPath(
-              "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
-            );
-            gltfLoader.setDRACOLoader(dracoLoader);
-          }
+          modelMap[item.modelUrl].then((gltf) => {
+            gltf.scene = gltf.scene.clone();
 
-          gltfLoader.load(item.modelUrl, (gltf) => {
             furnitures.add(gltf.scene);
 
             gltf.scene.scale.setScalar(item.modelScale || 1);
@@ -650,17 +695,9 @@ function Main() {
     furnitures.name = "furnitures";
 
     data.furnitures.forEach((item) => {
-      const gltfLoader = new GLTFLoader();
+      modelMap[item.modelUrl].then((gltf) => {
+        gltf.scene = gltf.scene.clone();
 
-      if (item.isDraco) {
-        const dracoLoader = new DRACOLoader();
-        dracoLoader.setDecoderPath(
-          "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
-        );
-        gltfLoader.setDRACOLoader(dracoLoader);
-      }
-
-      gltfLoader.load(item.modelUrl, (gltf) => {
         furnitures.add(gltf.scene);
 
         gltf.scene.scale.setScalar(item.modelScale || 1);
@@ -713,7 +750,7 @@ function Main() {
   const [, drop] = useDrop({
     accept: "家具",
     drop: (item: any, monitor) => {
-      const { modelUrl, isDraco, modelScale } = item;
+      const { modelUrl, modelScale } = item;
 
       const dom = document.getElementById("threejs-3d-container")!;
       // 获取鼠标在3d场景中的位置
@@ -744,7 +781,6 @@ function Main() {
           addFurniture({
             id: "furniture" + Math.random().toString().slice(2, 8),
             modelUrl,
-            isDraco,
             modelScale,
             position: {
               x: point.x,

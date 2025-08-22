@@ -10,7 +10,6 @@ import { useDrag } from "react-dnd";
 interface MenuItemProps {
   imgSrc: string;
   title: string;
-  isDraco?: boolean;
   modelUrl: string;
   modelScale?: number;
 }
@@ -21,7 +20,6 @@ function MenuItem(props: MenuItemProps) {
   const [, drag] = useDrag({
     type: "家具",
     item: {
-      isDraco: props.isDraco,
       modelUrl: props.modelUrl,
       modelScale: props.modelScale,
     },
@@ -132,8 +130,17 @@ function Menu() {
       ) : null}
       {key === "家具" ? (
         <div className="furniture-list">
-          <MenuItem imgSrc="./bed.png" modelUrl="./bed.glb" title="床" isDraco={true} modelScale={800} />
-          <MenuItem imgSrc="./table.png" modelUrl="./dining-table.glb" title="餐桌"/>
+          <MenuItem
+            imgSrc="./bed.png"
+            modelUrl="./bed.glb"
+            title="床"
+            modelScale={800}
+          />
+          <MenuItem
+            imgSrc="./table.png"
+            modelUrl="./dining-table.glb"
+            title="餐桌"
+          />
         </div>
       ) : null}
       <div

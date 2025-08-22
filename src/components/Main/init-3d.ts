@@ -6,7 +6,8 @@ import { Action } from "../../store";
 export const init3D = (
   dom: HTMLElement,
   wallsVisibilityCalc: () => void,
-  updateFurniture: Action["updateFurniture"]
+  updateFurniture: Action["updateFurniture"],
+  setCurSelectedFurniture: Action["setCurSelectedFurniture"]
 ) => {
   // 创建场景
   const scene = new THREE.Scene();
@@ -105,7 +106,6 @@ export const init3D = (
 
   const edges: Array<THREE.Line> = [];
   renderer.domElement.addEventListener("click", (e) => {
-
     const { x: width, y: height } = renderer.getSize(new THREE.Vector2());
 
     const y = -((e.offsetY / height) * 2 - 1);
@@ -120,14 +120,15 @@ export const init3D = (
     const furnitures = scene.getObjectByName("furnitures")!;
     // 获取射线与家具的交点
     const intersections2 = rayCaster.intersectObjects(furnitures.children);
-
     if (intersections2.length > 0) {
       const obj = intersections2[0].object as any;
       if (obj.target) {
         transformControls.attach(obj.target);
+        setCurSelectedFurniture(obj.target.name);
       }
     } else {
       transformControls.detach();
+      setCurSelectedFurniture("");
     }
 
     // 删除之前的边
@@ -186,11 +187,16 @@ export const init3D = (
     }
   };
 
+  const detachTransformControls = () => {
+    transformControls.detach();
+  }
+
   return {
     scene,
     camera,
     changeMode,
     changeSize,
-    controls
+    controls,
+    detachTransformControls,
   };
 };

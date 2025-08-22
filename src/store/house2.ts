@@ -194,38 +194,7 @@ const data: State["data"] = {
       height: 3000,
     },
   ],
-  furnitures: [
-    // {
-    //   id: "furniture1",
-    //   modelUrl: "./dining-table.glb",
-    //   position: {
-    //     x: 1500,
-    //     y: 0,
-    //     z: 3000,
-    //   },
-    //   rotation: {
-    //     x: 0,
-    //     y: Math.PI / 2,
-    //     z: 0,
-    //   },
-    // },
-    // {
-    //   id: "furniture2",
-    //   modelUrl: "./bed.glb",
-    //   modelScale: 800,
-    //   isDraco: true,
-    //   position: {
-    //     x: -647.4215938726065,
-    //     y: 0,
-    //     z: 7164.314346338078,
-    //   },
-    //   rotation: {
-    //     x: 0,
-    //     y: 1.482366445885148,
-    //     z: 0,
-    //   },
-    // },
-  ],
+  furnitures: [],
 };
 
 export default data;
