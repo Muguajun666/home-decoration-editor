@@ -132,25 +132,25 @@ export const init3D = (
     }
 
     // 删除之前的边
-    edges.forEach((item) => {
-      item.parent?.remove(item);
-    });
+    // edges.forEach((item) => {
+    //   item.parent?.remove(item);
+    // });
 
     // 如果射线与场景有交点
-    if (intersections.length > 0) {
-      const obj = intersections[0].object as THREE.Mesh;
+    // if (intersections.length > 0) {
+    //   const obj = intersections[0].object as THREE.Mesh;
 
-      // 如果交点是网格
-      if (obj.isMesh) {
-        const geometry = new THREE.EdgesGeometry(obj.geometry);
-        const material = new THREE.LineBasicMaterial({ color: "blue" });
+    //   // 如果交点是网格
+    //   if (obj.isMesh) {
+    //     const geometry = new THREE.EdgesGeometry(obj.geometry);
+    //     const material = new THREE.LineBasicMaterial({ color: "blue" });
 
-        const line = new THREE.LineSegments(geometry, material);
+    //     const line = new THREE.LineSegments(geometry, material);
 
-        obj.add(line);
-        edges.push(line);
-      }
-    }
+    //     obj.add(line);
+    //     edges.push(line);
+    //   }
+    // }
   });
 
   const changeMode = (isTranslate: boolean) => {

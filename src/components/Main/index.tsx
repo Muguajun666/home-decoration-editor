@@ -484,7 +484,7 @@ function Main() {
             -item.position.z
           );
           obj.rotation.x = item.rotation.x;
-          obj.rotation.y = item.rotation.y;
+          obj.rotation.y = item.rotation.y + Math.PI;
           obj.rotation.z = item.rotation.z;
         } else {
           // 添加家具
@@ -503,7 +503,7 @@ function Main() {
               -item.position.z
             );
             gltf.scene.rotation.x = item.rotation.x;
-            gltf.scene.rotation.y = item.rotation.y;
+            gltf.scene.rotation.y = item.rotation.y + Math.PI;
             gltf.scene.rotation.z = item.rotation.z;
 
             gltf.scene.traverse((obj) => {
@@ -708,7 +708,7 @@ function Main() {
           -item.position.z
         );
         gltf.scene.rotation.x = item.rotation.x;
-        gltf.scene.rotation.y = item.rotation.y;
+        gltf.scene.rotation.y = item.rotation.y + Math.PI;
         gltf.scene.rotation.z = item.rotation.z;
 
         gltf.scene.traverse((obj) => {
